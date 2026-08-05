@@ -1,0 +1,9 @@
+{
+  "name": "연구소용 스마트 와인 양조 계산기",
+  "short_name": "와인 양조 계산기",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f4f7f6",
+  "theme_color": "#722F37",
+  "lang": "ko"
+}

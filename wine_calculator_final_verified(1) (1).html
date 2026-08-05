@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#722F37">
+<meta name="description" content="연구소 및 양조 현장을 위한 스마트 와인 양조 올인원 계산기">
+<title>연구소용 스마트 와인 양조 올인원 계산기 - 검증본</title>
+<style>
+:root{--wine:#722F37;--wine-dark:#5a242c;--bg:#f4f7f6;--card:#fff;--muted:#666;--line:#ddd}
+*{box-sizing:border-box} body{font-family:"Malgun Gothic","Apple SD Gothic Neo",sans-serif;background:var(--bg);margin:0;padding:20px;color:#333}
+.container{max-width:800px;margin:0 auto;background:var(--card);padding:28px;border-radius:14px;box-shadow:0 4px 18px rgba(0,0,0,.09)}
+h1{text-align:center;color:var(--wine);margin:0 0 8px;font-size:24px}.subtitle{text-align:center;color:#666;font-size:12px;margin-bottom:22px}
+.tabs{display:flex;gap:2px;margin-bottom:20px;border-bottom:2px solid var(--line);overflow:auto}
+.tab-btn{flex:1;min-width:68px;background:none;border:0;padding:11px 2px;font-size:11px;font-weight:700;cursor:pointer;color:#666;white-space:nowrap}
+.tab-btn.active{color:var(--wine);border-bottom:3px solid var(--wine);margin-bottom:-2px}.tab-content{display:none}.tab-content.active{display:block}
+.form-group{margin-bottom:14px}label{display:block;margin-bottom:6px;font-weight:700;font-size:14px}
+input,select{width:100%;padding:11px;border:1px solid #ccc;border-radius:7px;font-size:14px;background:#fff}
+button.calc-btn{width:100%;background:var(--wine);color:#fff;border:0;padding:13px;font-size:16px;font-weight:700;border-radius:7px;cursor:pointer;margin-top:6px}
+button.calc-btn:hover{background:var(--wine-dark)}
+.result-box{margin-top:18px;background:#fdf8f8;border-left:5px solid var(--wine);padding:16px;border-radius:5px;line-height:1.7}
+.result-box h3{margin:0 0 10px;color:var(--wine);font-size:16px}.result-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}
+.metric{background:#fff;border:1px solid #eadfe1;border-radius:8px;padding:10px}.metric .k{font-size:12px;color:#666}.metric .v{font-size:18px;font-weight:800;color:#333;margin-top:2px}
+.note-box{font-size:12px;color:#444;background:#f1f3f5;border:1px solid #dcdcdc;padding:10px;border-radius:6px;margin-top:12px}
+.note-box.warn{background:#fff9e9;border-color:#ead9a3}.note-box.good{background:#eef8f2;border-color:#b9dec8}
+hr{border:0;border-top:1px solid #e5e5e5;margin:18px 0}.ok{color:#1f6b45;font-weight:700}.primary{color:var(--wine)!important}
+.small{font-size:12px;color:#666}.formula{font-family:Consolas,monospace;font-size:12px;background:#f7f7f7;padding:8px;border-radius:5px}
+@media(max-width:560px){body{padding:10px}.container{padding:18px}.result-grid{grid-template-columns:1fr}h1{font-size:21px}}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>🍷 연구소용 스마트 와인 양조 올인원 계산기</h1>
+<div class="subtitle">실무용 검증·검산 반영 버전</div>
+
+<div class="tabs">
+<button class="tab-btn active" onclick="switchTab(0)">① 아황산</button>
+<button class="tab-btn" onclick="switchTab(1)">② 효모</button>
+<button class="tab-btn" onclick="switchTab(2)">③ 보당·도수</button>
+<button class="tab-btn" onclick="switchTab(3)">④ 균주희석</button>
+<button class="tab-btn" onclick="switchTab(4)">⑤ 블렌딩</button>
+<button class="tab-btn" onclick="switchTab(5)">⑥ 산도보정</button>
+<button class="tab-btn" onclick="switchTab(6)">⑦ 앙금·Ullage</button>
+</div>
+
+<div class="tab-content active" id="tab-0">
+<div class="form-group"><label>포도즙(Must) 총 용량 (L)</label><input type="number" id="so2_vol" value="100" min="0.01" step="0.1"></div>
+<div class="form-group"><label>측정된 포도즙 pH</label><input type="number" id="so2_ph" value="3.25" min="2.0" max="5.0" step="0.01"></div>
+<div class="form-group"><label>목표 분자 아황산 Molecular SO₂ (mg/L)</label><input type="number" id="so2_target_mol" value="0.8" min="0" step="0.1"></div>
+<div class="form-group"><label>KMBS 제품의 유효 SO₂ 함량비 (%)</label><input type="number" id="so2_activity" value="57.6" min="1" max="100" step="0.1"></div>
+<button class="calc-btn" onclick="calcSO2()">이론적 Free SO₂ 및 KMBS 투입량 계산</button>
+<div class="result-box" id="so2_result" style="display:none"><h3>📊 산출 결과</h3><div id="so2_output_text"></div>
+<div class="note-box warn">⚠️ 이 계산은 pH와 목표 Molecular SO₂로부터 필요한 이론적 Free SO₂와 KMBS 투입량을 산출합니다. 실제 와인/포도즙에서는 결합·산화·공정 손실이 있어 실제 자유 SO₂를 측정할 수 있다면 반드시 확인해야 합니다. 연구소에서 측정이 불가능한 경우에는 이 값을 '이론적 투입량'으로 사용하고 과량 투입하지 마세요.</div>
+</div></div>
+
+<div class="tab-content" id="tab-1">
+<div class="form-group"><label>포도즙(Must) 총 용량 (L)</label><input type="number" id="yeast_vol" value="100" min="0.01" step="0.1"></div>
+<div class="form-group"><label>효모 접종량 (g/hL) <span class="small">※ 제품 제조사 권장량 우선</span></label><input type="number" id="yeast_rate" value="20" min="0" step="1"></div>
+<button class="calc-btn" onclick="calcYeast()">효모 수화·접종량 계산</button>
+<div class="result-box" id="yeast_result" style="display:none"><h3>📊 산출 결과</h3><div id="yeast_output_text"></div>
+<div class="note-box warn">⚠️ 효모마다 권장량과 수화법이 다릅니다. 아래 계산은 입력한 접종량을 기준으로 하며, 제조사 TDS를 우선 적용하세요. 일반적인 Saccharomyces 건조효모 예시로 10배 물과 약 35~40°C, 약 20분 수화가 사용됩니다.</div>
+</div></div>
+
+<div class="tab-content" id="tab-2">
+<div class="form-group"><label>포도즙(Must) 총 용량 (L)</label><input type="number" id="chapt_vol" value="100" min="0.01" step="0.1"></div>
+<div class="form-group"><label>현재 당도 (°Brix)</label><input type="number" id="chapt_current_brix" value="20.0" min="0" max="40" step="0.1"></div>
+<div class="form-group"><label>목표 당도 (°Brix)</label><input type="number" id="chapt_target_brix" value="22.5" min="0" max="40" step="0.1"></div>
+<button class="calc-btn" onclick="calcChapt()">보당량 및 예상 도수 계산</button>
+<div class="result-box" id="chapt_result" style="display:none"><h3>📊 보당 산출 결과</h3><div id="chapt_output_text"></div>
+<hr><h3>🔄 보당 후 재측정 보정</h3>
+<div class="form-group"><label>보당 후 재측정 Brix (°Brix)</label><input type="number" id="post_brix" step="0.1" min="0" max="40"></div>
+<button class="calc-btn" onclick="calcPostChapt()">재측정 Brix 기준 추가 보당량 계산</button>
+<div id="post_result" style="margin-top:12px"></div>
+</div></div>
+
+<div class="tab-content" id="tab-3">
+<div class="form-group"><label>원하는 희석 배수 (배)</label><input type="number" id="dil_factor" value="10" min="1" step="0.1"></div>
+<div class="form-group"><label>최종 희석액 용량 (mL 또는 µL)</label><input type="number" id="dil_final_vol" value="100" min="0.1" step="0.1"></div>
+<button class="calc-btn" onclick="calcDilution()">균주 희석 용량 계산</button>
+<div class="result-box" id="dil_result" style="display:none"><h3>📊 균주 희석 산출 결과</h3><div id="dil_output_text"></div>
+<div class="note-box">⚠️ 원액을 취한 후 부족한 부피만큼 멸균수나 배지로 채우세요. 최종 부피 기준의 단순 희석 계산입니다.</div>
+</div></div>
+
+<div class="tab-content" id="tab-4">
+<div class="form-group"><label>기준 선택</label><select id="blend_mode" onchange="toggleBlendMode()"><option value="brix">당도 (°Brix 기준)</option><option value="abv">알코올 도수 (% ABV 기준)</option></select></div>
+<div class="form-group"><label id="lbl_c1">고농도 원액 1 농도 (°Brix)</label><input type="number" id="blend_c1" value="24.0" min="0" step="0.1"></div>
+<div class="form-group"><label id="lbl_c2">저농도 원액 2 농도 (°Brix)</label><input type="number" id="blend_c2" value="18.0" min="0" step="0.1"></div>
+<div class="form-group"><label id="lbl_target">목표 농도 (°Brix)</label><input type="number" id="blend_target" value="21.0" min="0" step="0.1"></div>
+<div class="form-group"><label>최종 혼합 총 용량 (L)</label><input type="number" id="blend_total_vol" value="100" min="0.1" step="0.1"></div>
+<button class="calc-btn" onclick="calcBlending()">블렌딩 비율 계산</button>
+<div class="result-box" id="blend_result" style="display:none"><h3>📊 블렌딩 산출 결과</h3><div id="blend_output_text"></div>
+<div class="note-box warn">⚠️ Pearson's Square는 농도와 부피가 선형적으로 혼합된다는 가정의 간편 계산입니다. 실제 와인의 밀도·수축·온도 등의 영향은 반영하지 않습니다. ABV 블렌딩도 실무에서는 혼합 후 실제 도수를 확인하세요.</div>
+</div></div>
+
+<div class="tab-content" id="tab-5">
+<div class="form-group"><label>포도즙 총 용량 (L)</label><input type="number" id="acid_vol" value="100" min="0.1" step="0.1"></div>
+<div class="form-group"><label>현재 적정산도 TA (g/L as Tartaric Acid)</label><input type="number" id="acid_curr" value="5.5" min="0" step="0.1"></div>
+<div class="form-group"><label>목표 TA (g/L as Tartaric Acid)</label><input type="number" id="acid_target" value="7.0" min="0" step="0.1"></div>
+<button class="calc-btn" onclick="calcAcid()">주석산 투입량 계산</button>
+<div class="result-box" id="acid_result" style="display:none"><h3>📊 산도 보정 산출 결과</h3><div id="acid_output_text"></div>
+<div class="note-box warn">⚠️ TA는 적정으로 측정하는 값이며 '총산(total acidity)'과 같은 의미로 단정하면 안 됩니다. 주석산 투입 후에는 반드시 TA를 재측정하세요.</div>
+</div></div>
+
+<div class="tab-content" id="tab-6">
+<div class="form-group"><label>용기(탱크/배럴) 총 용량 (L)</label><input type="number" id="ull_container_vol" value="225" min="1" step="0.1"></div>
+<div class="form-group"><label>랙킹 후 회수한 실제 맑은 와인량 (L)</label><input type="number" id="ull_clear_vol" value="200" min="0" step="0.1"></div>
+<button class="calc-btn" onclick="calcUllage()">Ullage 및 보충 와인 계산</button>
+<div class="result-box" id="ull_result" style="display:none"><h3>📊 앙금 및 여유공간(Ullage) 결과</h3><div id="ull_output_text"></div>
+<div class="note-box warn">⚠️ 계산상 빈 공간은 용기 공칭용량과 회수량의 차이입니다. 실제 보충량은 탱크/배럴의 헤드스페이스 관리 기준과 보충 와인의 양을 고려해 결정하세요.</div>
+</div></div>
+</div>
+
+<script>
+function switchTab(idx){const tabs=document.querySelectorAll('.tab-btn'),contents=document.querySelectorAll('.tab-content');tabs.forEach((t,i)=>{t.classList.toggle('active',i===idx);contents[i].classList.toggle('active',i===idx)})}
+function num(id){return parseFloat(document.getElementById(id).value)}
+function valid(...xs){return xs.every(x=>Number.isFinite(x))}
+function fmt(x,d=2){return Number(x).toLocaleString('ko-KR',{minimumFractionDigits:d,maximumFractionDigits:d})}
+
+/* Molecular SO2 relationship:
+   molecular fraction alpha = 1/(1+10^(pH-pKa2)); pKa2≈1.81.
+   Therefore Free SO2 = Molecular SO2 / alpha = Molecular*(1+10^(pH-1.81)).
+   KMBS mass = FreeSO2(mg/L)*volume(L) / (1000 mg/g * active SO2 fraction).
+*/
+function calcSO2(){
+ const vol=num('so2_vol'),ph=num('so2_ph'),mol=num('so2_target_mol'),activity=num('so2_activity')/100;
+ if(!valid(vol,ph,mol,activity)||vol<=0||activity<=0||mol<0){alert('입력값을 확인하세요.');return}
+ const free=mol*(1+Math.pow(10,ph-1.81));
+ const so2g=free*vol/1000;
+ const kmbs=so2g/activity;
+ document.getElementById('so2_output_text').innerHTML=`<div class="result-grid">
+<div class="metric"><div class="k">목표 Molecular SO₂</div><div class="v">${fmt(mol,1)} mg/L</div></div>
+<div class="metric"><div class="k">이론적 Free SO₂</div><div class="v">${fmt(free,1)} mg/L</div></div>
+<div class="metric"><div class="k">전체 필요 SO₂</div><div class="v">${fmt(so2g,2)} g</div></div>
+<div class="metric"><div class="k">KMBS 이론 투입량</div><div class="v primary">${fmt(kmbs,2)} g</div></div></div>
+<div class="formula">Free SO₂ = Molecular SO₂ × [1 + 10^(pH−1.81)]</div>`;
+ document.getElementById('so2_result').style.display='block';
+}
+
+function calcYeast(){
+ const vol=num('yeast_vol'),rate=num('yeast_rate');
+ if(!valid(vol,rate)||vol<=0||rate<0){alert('입력값을 확인하세요.');return}
+ const yeast=vol/100*rate,water=yeast*10;
+ document.getElementById('yeast_output_text').innerHTML=`<div class="result-grid">
+<div class="metric"><div class="k">총 ADY 효모량</div><div class="v">${fmt(yeast,1)} g</div></div>
+<div class="metric"><div class="k">수화수량(10배)</div><div class="v">${fmt(water,0)} mL</div></div></div>
+<b>작업 가이드:</b> 입력한 접종량을 기준으로 계산했습니다. 제조사 TDS의 수화온도·시간·접종량을 우선 적용하세요.`;
+ document.getElementById('yeast_result').style.display='block';
+}
+
+/* Density approximation for sucrose solutions / Brix conversion.
+   Used only to estimate initial must mass for the mass-balance calculation. */
+function brixDensity(b){return 1 + b/(258.6-((b/258.2)*227.1))}
+
+/* Mass balance on dissolved sugar:
+   initial sugar mass = initial solution mass × Brix/100
+   final sugar mass = initial sugar + x
+   final solution mass = initial solution mass + x
+   target = final sugar/final solution
+   => x = M0*(B2-B1)/(100-B2)
+   This is internally consistent with Brix as mass fraction.
+*/
+function massBalanceSugar(vol,b1,b2){
+ const density=brixDensity(b1), initialMassKg=vol*density;
+ const xKg=initialMassKg*(b2-b1)/(100-b2);
+ const finalMassKg=initialMassKg+xKg, finalDensity=brixDensity(b2), finalVolL=finalMassKg/finalDensity;
+ return {density,initialMassKg,xKg,finalMassKg,finalVolL,finalDensity};
+}
+
+function calcChapt(){
+ const vol=num('chapt_vol'),b1=num('chapt_current_brix'),b2=num('chapt_target_brix');
+ if(!valid(vol,b1,b2)||vol<=0||b1<0||b2<=b1||b2>=100){alert('목표 Brix는 현재 Brix보다 높고 100 미만이어야 합니다.');return}
+ const diff=b2-b1;
+ const simpleKg=vol*diff*0.0105;
+ const mb=massBalanceSugar(vol,b1,b2);
+ const abv=b2*0.57;
+ document.getElementById('post_brix').value='';document.getElementById('post_result').innerHTML='';
+ document.getElementById('chapt_output_text').innerHTML=`<div class="result-grid">
+<div class="metric"><div class="k">Brix 상승폭</div><div class="v">+${fmt(diff,1)} °</div></div>
+<div class="metric"><div class="k">예상 ABV (간이)</div><div class="v">${fmt(abv,1)} % vol</div></div>
+<div class="metric"><div class="k">① 현장 간편 계산</div><div class="v">${fmt(simpleKg,2)} kg</div></div>
+<div class="metric"><div class="k">② 질량수지 계산</div><div class="v primary">${fmt(mb.xKg,2)} kg</div></div></div>
+<div class="note-box good"><b>⭐ 질량수지 계산값을 주 계산값으로 사용:</b> 약 <b>${fmt(mb.xKg,2)} kg</b>. 간편식 ${fmt(simpleKg,2)} kg은 참고값입니다.</div>
+<div class="small">질량수지 계산은 Brix를 질량분율로 보고, 초기 Must 밀도를 이용해 초기 질량을 추정한 값입니다. 설탕 투입 후 실제 Brix를 재측정하면 그 값으로 추가 보당량을 다시 계산하세요.</div>`;
+ document.getElementById('chapt_result').style.display='block';
+}
+
+function calcPostChapt(){
+ const vol=num('chapt_vol'),target=num('chapt_target_brix'),post=num('post_brix');
+ if(!valid(vol,target,post)||vol<=0||post<0||target<=post||target>=100){ 
+   if(valid(target,post)&&post>=target){document.getElementById('post_result').innerHTML='<div class="ok">✅ 목표 Brix에 도달했거나 초과했습니다. 추가 보당은 필요 없습니다.</div>';return}
+   alert('재측정 Brix와 목표 Brix를 확인하세요.');return
+ }
+ const mb=massBalanceSugar(vol,post,target);
+ document.getElementById('post_result').innerHTML=`<div class="metric"><div class="k">재측정 Brix</div><div class="v">${fmt(post,1)} °Brix</div></div><p><b>추가 보당량(질량수지):</b> <strong>${fmt(mb.xKg,2)} kg</strong></p>`;
+}
+
+function calcDilution(){
+ const df=num('dil_factor'),finalVol=num('dil_final_vol');
+ if(!valid(df,finalVol)||df<1||finalVol<=0){alert('희석 배수와 최종 용량을 올바르게 입력하세요.');return}
+ const stockVol=finalVol/df,diluentVol=finalVol-stockVol;
+ document.getElementById('dil_output_text').innerHTML=`<div class="result-grid">
+<div class="metric"><div class="k">희석 배수</div><div class="v">${fmt(df,1)} 배</div></div>
+<div class="metric"><div class="k">최종 목표 용량</div><div class="v">${fmt(finalVol,1)}</div></div>
+<div class="metric"><div class="k">① 원액 취할 양</div><div class="v primary">${fmt(stockVol,2)}</div></div>
+<div class="metric"><div class="k">② 희석액 채울 양</div><div class="v">${fmt(diluentVol,2)}</div></div></div>`;
+ document.getElementById('dil_result').style.display='block';
+}
+
+function toggleBlendMode(){
+ const mode=document.getElementById('blend_mode').value,unit=mode==='brix'?'°Brix':'% ABV';
+ document.getElementById('lbl_c1').innerText=`고농도 원액 1 농도 (${unit})`;document.getElementById('lbl_c2').innerText=`저농도 원액 2 농도 (${unit})`;document.getElementById('lbl_target').innerText=`목표 농도 (${unit})`;
+}
+function calcBlending(){
+ const c1=num('blend_c1'),c2=num('blend_c2'),target=num('blend_target'),totalVol=num('blend_total_vol');
+ if(!valid(c1,c2,target,totalVol)||totalVol<=0||c1<=c2||target<=c2||target>=c1){alert('목표 농도는 고농도와 저농도 사이여야 합니다.');return}
+ const ratio1=target-c2,ratio2=c1-target,sum=ratio1+ratio2,vol1=totalVol*ratio1/sum,vol2=totalVol*ratio2/sum;
+ document.getElementById('blend_output_text').innerHTML=`<div class="result-grid">
+<div class="metric"><div class="k">고농도 원액 1</div><div class="v primary">${fmt(vol1,2)} L</div></div>
+<div class="metric"><div class="k">저농도 원액 2</div><div class="v">${fmt(vol2,2)} L</div></div>
+<div class="metric"><div class="k">원액 1 비율</div><div class="v">${fmt(vol1/totalVol*100,1)} %</div></div>
+<div class="metric"><div class="k">원액 2 비율</div><div class="v">${fmt(vol2/totalVol*100,1)} %</div></div></div>
+<div class="small">계산 검산: ${fmt(vol1+vol2,2)} L = 목표 총량 ${fmt(totalVol,2)} L</div>`;
+ document.getElementById('blend_result').style.display='block';
+}
+
+function calcAcid(){
+ const vol=num('acid_vol'),curr=num('acid_curr'),target=num('acid_target');
+ if(!valid(vol,curr,target)||vol<=0||curr<0||target<=curr){alert('목표 TA는 현재 TA보다 높아야 합니다.');return}
+ const diff=target-curr,tartaricKg=diff*vol/1000;
+ document.getElementById('acid_output_text').innerHTML=`<div class="result-grid">
+<div class="metric"><div class="k">TA 부족분 (ΔTA)</div><div class="v">+${fmt(diff,2)} g/L</div></div>
+<div class="metric"><div class="k">계산상 주석산 투입량</div><div class="v primary">${fmt(tartaricKg,3)} kg</div></div></div>
+<b>작업 가이드:</b> ${fmt(tartaricKg*1000,1)} g을 용해·분할 투입 후 충분히 혼합하고 TA를 재측정하세요.`;
+ document.getElementById('acid_result').style.display='block';
+}
+
+function calcUllage(){
+ const containerVol=num('ull_container_vol'),clearVol=num('ull_clear_vol');
+ if(!valid(containerVol,clearVol)||containerVol<=0||clearVol<0||clearVol>containerVol){alert('용기 용량과 실제 와인량을 올바르게 입력하세요.');return}
+ const ullageVol=containerVol-clearVol;
+ document.getElementById('ull_output_text').innerHTML=`<div class="result-grid">
+<div class="metric"><div class="k">용기 총 용량</div><div class="v">${fmt(containerVol,2)} L</div></div>
+<div class="metric"><div class="k">실제 맑은 와인량</div><div class="v">${fmt(clearVol,2)} L</div></div>
+<div class="metric"><div class="k">계산상 빈 공간</div><div class="v primary">${fmt(ullageVol,2)} L</div></div>
+<div class="metric"><div class="k">동일 용량 보충 시</div><div class="v">${fmt(ullageVol,2)} L</div></div></div>`;
+ document.getElementById('ull_result').style.display='block';
+}
+</script>
+</body>
+</html>
